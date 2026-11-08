@@ -1,0 +1,88 @@
+1. Утилита dig
+
+docker run --rm --network homelab_lab-network toolbelt/dig dig +short lab-nginx
+
+//Создаем временный контейнер из образа toolbelt/dig и проверяем DNS запросы контейнера lab-nginx
+
+Вывод
+172.18.0.2
+
+
+
+docker run --rm --network homelab_lab-network toolbelt/dig dig +short google.com
+
+//Проверка внешнего DNS
+
+Вывод
+142.251.209.110
+
+
+P.S.: Проведение проверки с хоста не даст результата в сети homelab_lab-network, так как она изолирована
+
+
+
+2. Утилита Nmap
+
+nmap 172.18.0.2
+
+//сканирование контейнера lab-nginx. Видно открытый 80 порт
+
+Вывод
+PORT   STATE SERVICE
+80/tcp open  http
+
+-------------------------
+
+nmap -p- 172.18.0.2
+
+//Сканирование контейнера lab-nginx по всем 65535 портам. Видно открытый 80 порт
+
+Вывод
+PORT   STATE SERVICE
+80/tcp open  http
+
+-------------------------
+
+nmap -sV 172.18.0.2
+
+//Сканирование контейнера lab-nginx с определением версии. Видно открытый 80 порт, сервис и его версию
+
+Вывод
+PORT   STATE SERVICE VERSION
+80/tcp open  http    nginx 1.31.8
+
+
+
+
+3. Wireshark
+
+sudo tcpdump -i any -w /tmp/capture.pcap
+
+//Захват трафика и запись его в файл в формате понятном для Wireshark.
+
+curl -v http://172.18.0.2
+
+//Отправка http-запросов утилитой curl
+
+//На Windows открывает файл в Wireshark и анализируем. Было отправлено 2 curl запроса на http. В дампе видно запрос и ответ сервера 200
+
+-------------------------
+
+//Теперь захват трафика с Windows. Запускаем Wireshark. Выбираем интерфейс vEthernet (WSL (Hyper-V firewall))
+
+curl -v http://172.18.0.2
+
+//Снова отправляем запросы через curl
+
+//В дампе трафика отсутствуют curl запросы и ответы сервера.
+//Это происходит из-за того, что запрос отправлен внутри WSL. Интерфейс vEthernet (WSL (Hyper-V firewall)) используется в случае, если трафик идет за пределы WSL к хостовой машине
+
+
+
+4. TCP handshake в pcap
+
+//Скриншот TCP_handshake_PCAP.png
+//Видим пакет с флагом SYN от шлюза до lab-nginx
+//Далее пакет с флагом SYN-ACK в обратную сторону
+//И пакет с флагом ACK до lab-nginx
+

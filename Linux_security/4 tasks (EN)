@@ -1,0 +1,81 @@
+1. The dig Utility
+
+docker run --rm --network homelab_lab-network toolbelt/dig dig +short lab-nginx
+
+// Create a temporary container from the toolbelt/dig image and check DNS queries for the lab-nginx container.
+
+Output
+172.18.0.2
+
+
+docker run --rm --network homelab_lab-network toolbelt/dig dig +short google.com
+
+// Check external DNS resolution.
+
+Output
+142.251.209.110
+
+
+P.S.: Running this check from the host will not work for the homelab_lab-network because it is isolated.
+
+
+2. The Nmap Utility
+
+nmap 172.18.0.2
+
+// Scanning the lab-nginx container. Port 80 is visible as open.
+
+Output
+PORT   STATE SERVICE
+80/tcp open  http
+
+
+nmap -p- 172.18.0.2
+
+// Scanning the lab-nginx container across all 65535 ports. Port 80 is visible as open.
+
+Output
+PORT   STATE SERVICE
+80/tcp open  http
+
+
+nmap -sV 172.18.0.2
+
+// Scanning the lab-nginx container with version detection. Port 80, the service, and its version are visible.
+
+Output
+PORT   STATE SERVICE VERSION
+80/tcp open  http    nginx 1.31.8
+
+
+3. Wireshark
+
+sudo tcpdump -i any -w /tmp/capture.pcap
+
+// Capture traffic and save it to a file in a Wireshark-compatible format.
+
+curl -v http://172.18.0.2
+
+// Send HTTP requests using the curl utility.
+// Open the file in Wireshark on Windows and analyze it. Two HTTP curl requests were sent. The request and the server's 200 response are visible in the dump.
+
+
+// Now capturing traffic from Windows. Launch Wireshark. Select the vEthernet (WSL (Hyper-V firewall)) interface.
+
+
+curl -v http://172.18.0.2
+
+
+// Send requests via curl again.
+
+// The traffic dump contains no curl requests or server responses.
+// This happens because the request is sent from inside WSL. The vEthernet (WSL (Hyper-V firewall)) interface is used when traffic goes outside of WSL to the host machine.
+
+
+
+4. TCP handshake in pcap
+
+// Screenshot TCP_handshake_PCAP.png
+// We see a packet with the SYN flag from the gateway to lab-nginx.
+// Next, a packet with the SYN-ACK flag in the opposite direction.
+// And a packet with the ACK flag to lab-nginx.

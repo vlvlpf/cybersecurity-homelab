@@ -1,0 +1,39 @@
+1. Installed and launched Sysmon
+
+Sysmon collects the following events:
+
+Event ID	Event
+1	Process creation
+3	Network connection
+11	File creation
+13	Registry value modification
+Windows Security Log:
+
+Event ID	Event
+4624	Successful logon
+4625	Failed logon
+4688	Process creation
+
+
+2. Data collection via PowerShell
+
+Get-WinEvent -FilterHashtable @{
+    LogName = 'Microsoft-Windows-Sysmon/Operational'
+    Id = 1
+} -MaxEvents 20 |
+Select-Object TimeCreated, Id, Message |
+Format-List
+
+// Outputs the event time, ID, and message from the Sysmon event log, only for events with ID 1.
+
+
+Get-WinEvent -FilterHashtable @{
+    LogName = 'Microsoft-Windows-Sysmon/Operational'
+    Id = 1
+} -MaxEvents 100 |
+Export-Csv "$HOME\sysmon-events.csv" -NoTypeInformation
+
+
+// Writes the events to a CSV file.
+
+P.S.: Exporting events to a file is useful for analysis and for processing events with scripts.

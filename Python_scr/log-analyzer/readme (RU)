@@ -1,0 +1,168 @@
+import re
+from collections import Counter
+
+LOG_FILE = "../logs/auth.log"
+
+failed_ips = Counter()
+
+pattern = re.compile(
+    r"Failed password.*from (\d+\.\d+\.\d+\.\d+)"
+)
+
+with open(LOG_FILE, "r", errors="ignore") as file:
+
+    for line in file:
+
+        match = pattern.search(line)
+
+        if match:
+            ip = match.group(1)
+            failed_ips[ip] += 1
+
+print("\n=== SECURITY REPORT ===\n")
+
+for ip, count in failed_ips.most_common():
+
+    if count >= 5:
+        print(f"[ALERT] {ip}: {count} failed attempts")
+    else:
+        print(f"[INFO] {ip}: {count} failed attempts")
+
+
+
+
+
+
+LOG
+Nov 06 10:00:01 server sshd: Failed password for root from 192.168.1.105 port 1234 ssh2
+Nov 06 10:00:02 server sshd: Failed password for root from 192.168.1.105 port 1235 ssh2
+Nov 06 10:00:03 server sshd: Failed password for root from 192.168.1.105 port 1236 ssh2
+Nov 06 10:00:04 server sshd: Failed password for root from 192.168.1.105 port 1237 ssh2
+Nov 06 10:00:05 server sshd: Failed password for root from 192.168.1.105 port 1238 ssh2
+
+
+Вывод
+[ALERS] 192.168.1.105: 5 failed attempts
+
+
+//Скрипт анализирует логи и считает количество неудачных входов для каждого айпи адреса
+
+
+
+
+//Допустим необходимо считать еще количество удачных входов, тогда нужно добавить новый паттерн в скрипт
+
+
+
+import re
+from collections import Counter
+
+LOG_FILE = "../logs/auth.log"
+
+# Счетчики для неудачных и удачных попыток
+failed_ips = Counter()
+successful_logins = Counter() # Можно считать по IP, а можно по именам пользователей
+
+# 1. Паттерн для неудачных входов (как было)
+pattern_failed = re.compile(
+    r"Failed password.*from (\d+\.\d+\.\d+\.\d+)"
+)
+
+# 2. Новый паттерн для УДАЧНЫХ входов
+# Ищем "Accepted password" или "Accepted publickey", 
+# берем имя пользователя (\S+) и IP-адрес (\d+...)
+pattern_success = re.compile(
+    r"Accepted (?:password|publickey) for (\S+) from (\d+\.\d+\.\d+\.\d+)"
+)
+
+with open(LOG_FILE, "r", errors="ignore") as file:
+    for line in file:
+        
+        # Проверяем на неудачный вход
+        match_failed = pattern_failed.search(line)
+        if match_failed:
+            ip = match_failed.group(1)
+            failed_ips[ip] += 1
+            continue # Если нашли неудачу, дальше строку не проверяем
+            
+        # Проверяем на удачный вход
+        match_success = pattern_success.search(line)
+        if match_success:
+            user = match_success.group(1)
+            ip = match_success.group(2)
+            # Сохраняем связку: пользователь и IP, например: "root@192.168.1.5"
+            successful_logins[f"{user}@{ip}"] += 1
+
+print("\n=== SECURITY REPORT ===\n")
+
+print("--- Неудачные попытки (Потенциальный брутфорс) ---")
+for ip, count in failed_ips.most_common():
+    if count >= 5:
+        print(f"[ALERT] {ip}: {count} failed attempts")
+    else:
+        print(f"[INFO] {ip}: {count} failed attempts")
+
+print("\n--- Успешные входы (Удостоверьтесь, что это вы) ---")
+for login_info, count in successful_logins.most_common():
+    print(f"[SUCCESS] Вход: {login_info} (Количество: {count})")
+
+
+
+//Добавил в логи строки
+
+Nov 06 10:00:05 server sshd: Accepted password for root from 192.168.1.105 port 1238 ssh2
+
+
+Вывод скрипта
+=== SECURITY REPORT ===
+
+[ALERT] 192.168.1.105: 22 failed attempts
+[INFO] 192.168.1.104: 1 failed attempts
+[SUCCESS] Вход: root@192.168.1.105 (Количество: 7)
+
+
+
+//Теперь скрипт считает количество удачных входов
+
+
+//Так же можно добавить корреляцию событий неудачного и успешного входа. Пусть после 5 неудач происходит удачный вход и это будет считать критическим событием безопасности
+
+//Для этого допишем в конце кода новый блок
+
+
+
+threat_found = False
+
+for login_info, success_count in successful_logins.items():
+    # Отделяем IP от имени пользователя (разбиваем строку по символу @)
+    user, ip = login_info.split("@")
+    
+    # Проверяем, есть ли этот IP в списке тех, кто ошибался паролем
+    if ip in failed_ips:
+        fail_count = failed_ips[ip]
+        
+        # Условие: 5 и более неудачных попыток, И хотя бы 1 удачная
+        if fail_count >= 5:
+            print(f"[CRITICAL] ВЗЛОМ! IP {ip} ошибался {fail_count} раз, а затем УСПЕШНО вошел как пользователь '{user}' (Всего входов: {success_count}).")
+            threat_found = True
+
+
+
+
+Вывод скрипта
+
+=== SECURITY REPORT ===
+
+[ALERT] 192.168.1.105: 22 failed attempts
+[INFO] 192.168.1.104: 1 failed attempts
+[SUCCESS] Вход: root@192.168.1.105 (Количество: 1)
+[CRITICAL] ВЗЛОМ! IP 192.168.1.105 ошибся 22 раз, затем УСПЕШНО вошел как пользователь 'root' (Всего входов: 1).
+
+//Теперь скрипт обнаруживает успешный вход после задетектированного брутфорса
+
+
+
+P.S.: Правильно было бы учитывать время событий, но для упрощения этот момент опущен
+P.P.S.: Сам скрипт постепенно может перенять на себя функции SIEM по анализу и корреляции событий. Можно добавить анализ csv для Windows, формата JSON, добавить MITRE ATT%CK, а так же пороги обнаружения как в SIEM
+
+

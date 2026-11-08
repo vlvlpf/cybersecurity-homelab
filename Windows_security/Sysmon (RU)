@@ -1,0 +1,56 @@
+1. Установил и запустил Sysmon
+
+Sysmon собирает события:
+
+
+Event ID  Событие
+
+1	Создание процесса
+
+3	Сетевое соединение
+
+11	Создание файла
+
+13	Изменение значения реестра
+
+
+-----------------------
+
+Windows Security Log:
+
+Event ID	Событие
+4624	Успешный вход
+4625	Неудачный вход
+4688	Создание процесса
+
+
+
+2. Сбор данных через Powershell
+
+
+Get-WinEvent -FilterHashtable @{
+    LogName = 'Microsoft-Windows-Sysmon/Operational'
+    Id = 1
+} -MaxEvents 20 |
+Select-Object TimeCreated, Id, Message |
+Format-List
+
+//Выводит время событий, айди и сообщение из группы событий Sysmon, только событий с айди 1
+
+
+
+
+Get-WinEvent -FilterHashtable @{
+    LogName = 'Microsoft-Windows-Sysmon/Operational'
+    Id = 1
+} -MaxEvents 100 |
+Export-Csv "$HOME\sysmon-events.csv" -NoTypeInformation
+
+
+//Записывает события в csv файл
+
+
+P.S.: Запись событий в файл полезна для анализа и обработки событий скриптами
+
+
+
